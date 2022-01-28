@@ -72,7 +72,7 @@ def weak_AA_class(outcomes, prediction, loss: LossFunc, Upper_Bound):
     learner_loss = np.zeros(T)
     C = (2 * math.sqrt(N_experts)) / Upper_Bound
     for t in range(1, T):
-        print(t)
+        # print(t)
         learner_prediction[t] = sum( norm_weights * prediction[t] )
         learner_loss[t] = loss.calc_loss(outcomes[t],learner_prediction[t])
         denominator = 0
@@ -94,7 +94,7 @@ def weak_AA(outcomes, prediction, loss, learning_rate):
     cumsum_loss = np.zeros(N_experts)
     learner_loss = np.zeros(T)
     for t in range(1, T):
-        print(t)
+        # print(t)
         learner_prediction[t] = sum( norm_weights * prediction[t] )
         learner_loss[t] = loss(outcomes[t],learner_prediction[t])
         for i in range(N_experts):

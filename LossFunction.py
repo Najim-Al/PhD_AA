@@ -123,8 +123,8 @@ class PnL_weak_loss(LossFunc):
         return_to_portfolio = 0
         for n in range(N_assets):
             #return_to_portfolio +=   -1 * (prediction * outcome)
-            #return_to_portfolio +=   -1 * (outcome + (prediction * outcome))
-            return_to_portfolio +=   -1 * min((outcome + (prediction * outcome)),0)
+            return_to_portfolio +=   -1 * (outcome + (prediction * outcome))
+            # return_to_portfolio +=   -1 * min((outcome + (prediction * outcome)),0)
         loss =  self.return_scale * return_to_portfolio
         #if loss == 0:
          #   loss = 1
