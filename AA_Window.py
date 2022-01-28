@@ -42,7 +42,7 @@ if __name__ == '__main__':
         prediction_array_s = prediction_array[idx_range[0]:idx_range[1],:]
         cmb = PnL_weak_loss(return_scale=1)
         Xlearner_loss, Xexpert_loss, Xlearner_preds  = weak_AA_class(outcomes_s, prediction_array_s,cmb,300000)
-        x2 = (Xlearner_preds * net_pnl[idx_range[0]:idx_range[1]].values)[idx_range[1]-testing_size:idx_range[1]]
+        x2 = (Xlearner_preds * net_pnl[idx_range[0]:idx_range[1]].values)[-testing_size:]
         results.append(x2)
         process+=1
     # x2 = Xlearner_preds * data_datesum['NetUsdPnL'].values
