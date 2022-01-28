@@ -85,6 +85,29 @@ def weak_AA_class(outcomes, prediction, loss: LossFunc, Upper_Bound):
             cumsum_loss += loss_log[t,:]
     return learner_loss, loss_log, learner_prediction
 
+def weak_AA_class_drawdown(outcomes, prediction, loss: LossFunc, Upper_Bound,drawdown):
+    T = len(outcomes)
+    N_experts = np.size(prediction,1)
+    norm_weights = np.ones(N_experts)
+    learner_prediction = np.zeros(T)
+    loss_log = np.zeros((T, N_experts))
+    cumsum_loss = np.zeros(N_experts)
+    learner_loss = np.zeros(T)
+    C = (2 * math.sqrt(N_experts)) / Upper_Bound
+    for t in range(1, T):
+        print(t)
+        learner_prediction[t] = sum( norm_weights * prediction[t] )
+        learner_loss[t] = loss.calc_loss(outcomes[t],learner_prediction[t],0)
+        denominator = 0
+        learning_rate = C / math.sqrt(t)
+        for j in range(N_experts):
+                denominator +=  np.exp(-learning_rate)**(cumsum_loss[j])
+        for i in range(N_experts):
+            norm_weights[i] = (np.exp(-learning_rate)**(cumsum_loss[i] )) / denominator
+            loss_log[t,i] = loss.calc_loss(outcomes[t],prediction[t,i], drawdown[t, i])
+            cumsum_loss += loss_log[t,:]
+    return learner_loss, loss_log, learner_prediction
+
 def weak_AA(outcomes, prediction, loss, learning_rate):
     T = len(outcomes)
     N_experts = np.size(prediction,1)

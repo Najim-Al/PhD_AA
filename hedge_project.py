@@ -6,7 +6,7 @@ Created on Wed Nov 17 15:21:13 2021
 """
 import sys
 sys.path.append(r'C:\Users\Owner\Documents\University\PhD\Code\Python\AA_coursework.py')
-from AA_coursework import AA, squared_loss, absoloute_loss, AA_Class, weak_AA_class
+from AA_coursework import *
 #import importlib.util
 #spec = importlib.util.spec_from_file_location("add", "C:\\Users\\Shubham-PC\\PycharmProjects\\pythonProject1")
 import matplotlib.pyplot as plt
@@ -92,17 +92,17 @@ def drawdown(pnl):
     return pnl.cumsum() - pnl.cumsum().cummax()
 
 def root_drawdown(preds, pnl):
-    N = len(prediction_array[0,:])
-    T = len(prediction_array[:,0])
+    N = len(preds[0,:])
+    T = len(preds[:,0])
     root_drawdowns = np.zeros((T, N))
     root__max_drawdowns = np.zeros((T, N))
     
     for n in range(N):
-        root_pnl = (preds * pnl)
-        root_pnl = root_pnl.cumsum()
+        root_pnl = pd.DataFrame(pnl + (preds[:,n] * pnl))
         max_DD = 0
-        for t in range(T):
-            DD = drawdown(root_pnl[t])
+        for t in range(1,T-1):
+            print('clinet:{}, epoch:{}'.format(n, t))
+            DD = drawdown(root_pnl[:t]).iloc[-1].values
             max_DD = min(DD, max_DD)
             root_drawdowns[t, n] = DD
             root__max_drawdowns[t, n] = max_DD
@@ -253,127 +253,129 @@ def top_experts(predictions, hedge_pnls, nth):
     #prediction_array = hedge_fraction_prediction(hedge_array, data_datesum['NetPosUsd'].values)
 """
 if __name__ == '__main__':    
-    agents = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\agents.obj")
-    data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\data.obj")
+    agents = pd.read_pickle(r"agents.obj")
+    data_datesum = pd.read_pickle(r"data.obj")
     #data_datesum = data_datesum.loc['2014-02-05':'2017-04-20']
-    prediction_array = pd.read_pickle( r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\predictions.obj")
-    i = [12743,12855,13191,13079,12967,12631,12519,13303,13415,
-         13415,
-        13431,
-        12309,
-        12310,
-        12311,
-        13303,
-        12855,
-        12967,
-        13303,
-        13415,
-        12407,
-        13079,
-        13191,
-        12631,
-        12743,
-        12519,
-        11495,
-        11607,
-        11831,
-        12167,
-        11943,
-        11271,
-        4424,
-        5544,
-        10047,
-        4408,
-        6655,
-        5560,
-        4312,
-        5432,
-        4200,
-        9935,
-        5320,
-        4296,
-        6543,
-        5448,
-        7863,
-        8871,
-        7975,
-        8423,
-        8199,
-        8535,
-        8087,
-        8759,
-        8647,
-        8311,
-        7970,
-        8530,
-        8194,
-        8754,
-        7858,
-        8306,
-        8642,
-        8866,
-        8418,
-        8871,
-        8759,
-        8870,
-        8865,
-        8866,
-        6689,
-        8647,
-        6694,
-        8887,
-        8758,
-        8753,
-        8754,
-        6577,
-        7735,
-        7751,
-        8535,
-        8646,
-        8641,
-        12368,
-        12592,
-        12928,
-        13376,
-        13040,
-        13264,
-        12816,
-        13152,
-        12704,
-        12480,
-        11520,
-        11296,
-        11744,
-        11968,
-        12080,
-        12192,
-        11856,
-        11408,
-        11632,
-        12304,
-        12192,
-        12080,
-        11968,
-        12288,
-        13424,
-        11184,
-        12176,
-        13312,
-        11072,
-        11856,
-        13376,
-        12064,
-        13200,
-        10960,
-        13264,
-        11952,
-        13088,
-        10848]
-    prediction_array = prediction_array[:, i] * -1 
+    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Code\Python\Aggregating-Algorithm\predictions.obj")
+    DrawDown = pd.read_pickle(r"drawdown.obj")
+    # i = [12743,12855,13191,13079,12967,12631,12519,13303,13415,
+    #      13415,
+    #     13431,
+    #     12309,
+    #     12310,
+    #     12311,
+    #     13303,
+    #     12855,
+    #     12967,
+    #     13303,
+    #     13415,
+    #     12407,
+    #     13079,
+    #     13191,
+    #     12631,
+    #     12743,
+    #     12519,
+    #     11495,
+    #     11607,
+    #     11831,
+    #     12167,
+    #     11943,
+    #     11271,
+    #     4424,
+    #     5544,
+    #     10047,
+    #     4408,
+    #     6655,
+    #     5560,
+    #     4312,
+    #     5432,
+    #     4200,
+    #     9935,
+    #     5320,
+    #     4296,
+    #     6543,
+    #     5448,
+    #     7863,
+    #     8871,
+    #     7975,
+    #     8423,
+    #     8199,
+    #     8535,
+    #     8087,
+    #     8759,
+    #     8647,
+    #     8311,
+    #     7970,
+    #     8530,
+    #     8194,
+    #     8754,
+    #     7858,
+    #     8306,
+    #     8642,
+    #     8866,
+    #     8418,
+    #     8871,
+    #     8759,
+    #     8870,
+    #     8865,
+    #     8866,
+    #     6689,
+    #     8647,
+    #     6694,
+    #     8887,
+    #     8758,
+    #     8753,
+    #     8754,
+    #     6577,
+    #     7735,
+    #     7751,
+    #     8535,
+    #     8646,
+    #     8641,
+    #     12368,
+    #     12592,
+    #     12928,
+    #     13376,
+    #     13040,
+    #     13264,
+    #     12816,
+    #     13152,
+    #     12704,
+    #     12480,
+    #     11520,
+    #     11296,
+    #     11744,
+    #     11968,
+    #     12080,
+    #     12192,
+    #     11856,
+    #     11408,
+    #     11632,
+    #     12304,
+    #     12192,
+    #     12080,
+    #     11968,
+    #     12288,
+    #     13424,
+    #     11184,
+    #     12176,
+    #     13312,
+    #     11072,
+    #     11856,
+    #     13376,
+    #     12064,
+    #     13200,
+    #     10960,
+    #     13264,
+    #     11952,
+    #     13088,
+    #     10848]
+   # prediction_array = prediction_array[:, i] * -1 
     #outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
     outcomes = data_datesum['NetUsdPnL'].values
     #outcomes_binary = outcome_binary(data_datesum['NetUsdPnL'].values)
-    
+    outcomes = outcomes[:100]
+    prediction_array = prediction_array[:100,:] * -1
     #outcomes = outcomes[9572:10984]
     #prediction_array = prediction_array[9572:10984, :]
     
@@ -400,12 +402,12 @@ if __name__ == '__main__':
     
     cmb = PnL_weak_loss(return_scale = 1)
     
-    Xlearner_loss, Xexpert_loss, Xlearner_preds  = weak_AA_class(outcomes, prediction_array,cmb,300000)
+    Xlearner_loss, Xexpert_loss, Xlearner_preds  = weak_AA_class(outcomes, prediction_array,cmb,2000000)
    # wlearner_loss, wexpert_loss, wlearner_preds = AA(outcomes_binary, prediction_array, absoloute_loss,2)
 
     plt.figure()
     #(data_datesum['NetUsdPnL'].cumsum() - data_datesum['NetUsdPnL'].cumsum().cummax() ).plot()
-    x2 = Xlearner_preds * data_datesum['NetUsdPnL'].values
+    x2 = Xlearner_preds *outcomes # data_datesum['NetUsdPnL'].values
    # y = x + data_datesum['NetUsdPnL'].values
     plt.plot(x2.cumsum())
     #x = Xlearner_preds * data_datesum['NetUsdPnL'].values    #x[1] = 0
