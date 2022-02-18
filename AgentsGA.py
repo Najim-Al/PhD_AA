@@ -9,7 +9,7 @@ model_param = []
 
 algorithm_param = {'max_num_iteration': 100,\
                    'population_size':100,\
-                   'mutation_probability':0.1,\
+                   'mutation_probability':0.2,\
                    'elit_ratio': 0.01,\
                    'crossover_probability': 0.5,\
                    'parents_portion': 0.3,\
@@ -46,7 +46,7 @@ def fitness_func(X):
 
     })
 
-    return -1.0 * pnl/maxDD if maxDD < 0 else 0
+    return -1.0 * pnl/maxDD if maxDD > 0 else 0
 
 # res = fitness_func(np.array([20,-0.2,0.2,40]))
 # print(res)
