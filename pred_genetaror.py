@@ -26,7 +26,8 @@ if __name__ == '__main__':
     hedge_fractions = (0.1, 0.15, 0.25, 0.3, 0.4, 0.5, 0.75, 0.85, 0.9, 1)
     skew = (0.1, 0.2,0.3, 0.5,0.6,0.8, 0.9)
     window = (-24*60,-24*30,-24*14,-24*7,-24,-12,-6,-3,3, 6, 12, 24, 24*7, 24*14,24*30,24*60)
-    
+
+
     indicators = {}
     for w in window:
         indicators[w] = indicator(data_datesum['mid_price'].values,w)
