@@ -10,6 +10,8 @@ from AA_coursework import *
 #import importlib.util
 #spec = importlib.util.spec_from_file_location("add", "C:\\Users\\Shubham-PC\\PycharmProjects\\pythonProject1")
 import matplotlib.pyplot as plt
+from tabulate import tabulate
+
 
 
 
@@ -52,7 +54,7 @@ def outcome_pnl(pnl, NetPos, absvol, mid_price):
     T = len(pnl)
     outcome = np.ones(T)
     for t in range(T-1):
-        outcome[t] = pnl[t+1] / ( abs(NetPos[t]) + absvol[t+1] ) #(mid_price[t+1] - mid_price[t]) / mid_price[t] #-pnl[t+1] / ( abs(NetPos[t]) + absvol[t+1] )
+        outcome[t] = pnl[t+1] / ( abs(NetPos[t]) + absvol[t+1] +1) #(mid_price[t+1] - mid_price[t]) / mid_price[t] #-pnl[t+1] / ( abs(NetPos[t]) + absvol[t+1] )
         
     return outcome
 
@@ -212,6 +214,72 @@ def top_experts(predictions, hedge_pnls, nth):
     ps = pred_sub.T.loc[sort.index[:]].T.values
     return ps
 
+from random import randint
+from math import floor
+
+def pred_selector(prediction_array, PnL):
+    t = np.size(prediction_array, axis = 0)
+    intervals = np.linspace(0, t, 5)
+    pnl = prediction_array*PnL[:,np.newaxis]
+    prediction_array = pd.DataFrame(prediction_array)
+    cumsum_pnls = np.cumsum(pnl, axis = 0)
+    cumsum_pnls = pd.DataFrame(cumsum_pnls)
+    column_index = []
+    for n in range(4):
+        print(intervals[n+1])
+        interval_pnl = cumsum_pnls.iloc[floor(intervals[n+1]) -1 ]
+        column_index.extend(interval_pnl.sort_values().iloc[0:10].index)
+        column_index.extend(interval_pnl.sort_values().iloc[-10:].index)
+        #column_index.extend(interval_pnl.iloc[6720].index)
+    for _ in range(60):
+        column_index.extend([randint(0,12320)])
+    prediction_array = prediction_array.iloc[:,column_index]
+    return prediction_array.values
+
+def plot_DD(prediction_array, PnL, AA, AA_names):
+    expert_pnl = prediction_array*PnL[:,np.newaxis]
+    expert_pnl = expert_pnl + PnL[:,np.newaxis]
+    expert_pnl = pd.DataFrame(expert_pnl)
+    #AA_pnl = AA*PnL + PnL
+    #AA_pnl = pd.DataFrame(AA_pnl)
+    fig, ax = plt.subplots()
+    ax.scatter(drawdown(expert_pnl).mean(),expert_pnl.cumsum().iloc[-1,:], color = 'blue')    
+    for n in range(len(AA)):
+        AA_pnl = AA[n] + PnL
+        AA_pnl = pd.DataFrame(AA_pnl)
+        ax.scatter(drawdown(AA_pnl).mean(),AA_pnl.cumsum().iloc[-1,:], color = 'red')
+        ax.annotate(AA_names[n], (drawdown(AA_pnl).mean(),AA_pnl.cumsum().iloc[-1,:]))
+    plt.xlabel('Mean Drawdown', fontsize = 40)
+    plt.ylabel('PnL', fontsize = 40)
+    
+def wealth_prediction(hedge_fractions, client_pos, client_pnl, initial_wealth):
+    N_clients = len(hedge_fractions[0,:])
+    T = len(hedge_fractions[:,0])
+    client_wealth = np.zeros((T+1,N_clients))
+    client_wealth_t = np.zeros(N_clients)
+    client_root = np.zeros((T,N_clients))
+    client_wealth[0] += initial_wealth
+    client_wealth_t[:] = initial_wealth
+    predictions = np.zeros((T, N_clients))
+    for n in range(N_clients):
+        for t in range(T):
+            client_root[t,n] = client_pos[t] * (1 + hedge_fractions[t,n])
+            predictions[t,n] = client_root[t,n] / client_wealth[t,n]
+            client_wealth_t[n] += client_pnl[t] * (1 + hedge_fractions[t,n])
+            client_wealth[t+1,n] = client_wealth_t[n]
+    return predictions,client_root,client_wealth
+        
+def learner_hedge_fraction(client_pos, client_wealth, learner_preds, weights):
+        T = len(learner_preds)
+        learner_hedge = np.zeros(T)
+        for t in range(T):
+            norm_weights = weights[t]/ sum(weights[t])
+            norm_pos = norm_weights * client_pos[t]
+            norm_pos = np.sum(norm_pos)
+            norm_wealth = norm_weights * client_wealth[t]
+            norm_wealth = np.sum(norm_wealth)
+            learner_hedge[t] = (norm_pos / norm_wealth) - 1
+        return learner_hedge
 """
     
     data['QdfTime'] = pd.to_datetime(data['QdfTime'])
@@ -255,9 +323,24 @@ def top_experts(predictions, hedge_pnls, nth):
 if __name__ == '__main__':    
     agents = pd.read_pickle(r"agents.obj")
     data_datesum = pd.read_pickle(r"data.obj")
+    prediction_array = pd.read_pickle(r"preds.obj")
+
     #data_datesum = data_datesum.loc['2014-02-05':'2017-04-20']
-    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Code\Python\Aggregating-Algorithm\predictions.obj")
-    DrawDown = pd.read_pickle(r"drawdown.obj")
+    #prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\72expertpreds.obj")
+    #DrawDown = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\72expertpredsdrawdown.obj")
+    
+    
+    data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\data_chf_usd.obj")
+    agents = pd.read_pickle( r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\agents_chf_usd.obj")
+    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\USD_CHF_PREDS.obj")
+    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\CHF_USD_0_drop.obj")
+
+ #   prediction_array_new,client_root,client_wealth = wealth_prediction(prediction_array, data_datesum['NetPosUsd'].values, data_datesum['NetUsdPnL'].values, 1*10**10 )
+
+#    data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\data_eur_gbp.obj")
+#   agents = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\agents_eur_gbp.obj")
+#    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\GBP_EUR_PREDS.obj")
+    
     # i = [12743,12855,13191,13079,12967,12631,12519,13303,13415,
     #      13415,
     #     13431,
@@ -370,12 +453,13 @@ if __name__ == '__main__':
     #     11952,
     #     13088,
     #     10848]
-   # prediction_array = prediction_array[:, i] * -1 
-    #outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
-    outcomes = data_datesum['NetUsdPnL'].values
+    #prediction_array = prediction_array * -1 
+    outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
+    #outcomes = data_datesum['NetUsdPnL'].values
     #outcomes_binary = outcome_binary(data_datesum['NetUsdPnL'].values)
-    outcomes = outcomes[:100]
-    prediction_array = prediction_array[:100,:] * -1
+    #outcomes = outcomes[:1000]
+    #prediction_array = prediction_array[:1000,:]
+    #data_datesum = data_datesum.iloc[:1000]
     #outcomes = outcomes[9572:10984]
     #prediction_array = prediction_array[9572:10984, :]
     
@@ -396,37 +480,444 @@ if __name__ == '__main__':
     
 #    pool.close()
     
-    #cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
-    #cmb = PnLLoss(return_scale = 1, cof = 0.0001)
-    #learner_loss, expert_loss, learner_preds = AA_Class(outcomes, prediction_array,cmb,1)
-    
-    cmb = PnL_weak_loss(return_scale = 1)
-    
-    Xlearner_loss, Xexpert_loss, Xlearner_preds  = weak_AA_class(outcomes, prediction_array,cmb,2000000)
-   # wlearner_loss, wexpert_loss, wlearner_preds = AA(outcomes_binary, prediction_array, absoloute_loss,2)
 
+# =============================================================================
+    AA_hedge_pnls = []
+    AA_root_pnls = []
+    DD = []
+    calmar = []
+    
+    list_dict = []
+    
+    # #run equal weights
+    # cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+    # xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class(outcomes, prediction_array,cmb,1)
+    # hedge_pnl_0 = xlearner_preds * data_datesum['NetUsdPnL'].values
+    # AA_pnls.append(hedge_pnl_1)
+    # print('Trial {} complete'.format(cmb))
+    
+    
+    #Equal weights
+    outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
+    cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+    xlearner_loss, xexpert_loss, xlearner_preds, weights  = AA_Class(outcomes, prediction_array,cmb,1)
+    AA_hedge_pnls = xlearner_preds * data_datesum['NetUsdPnL'].values
+    #AA_pnls.append(hedge_pnl_1)
+    AA_root_pnls = data_datesum['NetUsdPnL'].values + AA_hedge_pnls
+    dataf = pd.DataFrame(AA_root_pnls)
+    dd = drawdown(dataf)
+    DD = dd.min()
+    calmar = AA_root_pnls.sum() / abs(DD)
+    AA = {'Name': 'Equal Weights',
+          'Hedge PnL': AA_hedge_pnls,
+          'Root PnL': AA_root_pnls,
+          'Calmar': calmar}
+    list_dict.append(AA)
+    print('Trial {} complete'.format(cmb))
+    
+    # weak AA run
+    outcomes = data_datesum['NetUsdPnL'].values
+    cmb = PnL_weak_loss(return_scale = 1)
+    xlearner_loss, xexpert_loss, xlearner_preds, weights  = weak_AA_class(outcomes, prediction_array,cmb,2000000)
+    AA_hedge_pnls = xlearner_preds * data_datesum['NetUsdPnL'].values
+    #AA_pnls.append(hedge_pnl_1)
+    AA_root_pnls = data_datesum['NetUsdPnL'].values + AA_hedge_pnls
+    dataf = pd.DataFrame(AA_root_pnls)
+    dd = drawdown(dataf)
+    DD = dd.min()
+    calmar = AA_root_pnls.sum() / abs(DD)
+    AA = {'Name': 'Weak AA',
+          'Hedge PnL': AA_hedge_pnls,
+          'Root PnL': AA_root_pnls,
+          'Calmar': calmar}
+    list_dict.append(AA)
+    print('Trial {} complete'.format(cmb))
+    
+    
+    #pnl AA games
+    LS_values = [[1,0],
+                 [1,1]]
+    Discounting_values = [1, 0.05]
+
+    for ls in range(len(LS_values)):
+        for dis_factin in range(len(Discounting_values)):
+            name = 'PnL loss, ls = {}, dls = {}, df = {}'.format(LS_values[ls][0],LS_values[ls][1], Discounting_values[dis_factin])
+            cmb = LS_pnl_loss(return_scale = 0.000001, ls = LS_values[ls][0],
+                               dls = LS_values[ls][1])
+            xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,Discounting_values[dis_factin])
+            AA_hedge_pnls = xlearner_preds * data_datesum['NetUsdPnL'].values
+            AA_root_pnls = data_datesum['NetUsdPnL'].values + AA_hedge_pnls
+            dataf = pd.DataFrame(AA_root_pnls)
+            dd = drawdown(dataf)
+            DD = dd.min()
+            calmar = AA_root_pnls.sum() / abs(DD)
+            AA = {'Name': name,
+                  'Hedge PnL': AA_hedge_pnls,
+                  'Root PnL': AA_root_pnls,
+                  'Calmar': calmar}
+            list_dict.append(AA)
+            print('Trial {} complete'.format(cmb))
+            
+
+    
+    #Standard AA games
+    return_scaling_values = [1, 50, 100]
+    LS_values = [[1,0],
+                 [1,1]]
+    Discounting_values = [1, 0.05]
+    
+    outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
+    for ret in range(len(return_scaling_values)):
+        for ls in range(len(LS_values)):
+            for dis_factin in range(len(Discounting_values)):
+                   
+                name = 'return_scaling = {}, ls = {}, dls = {}, df = {}'.format( return_scaling_values[ret],
+                                                                       LS_values[ls][0],
+                                                                       LS_values[ls][1],
+                                                                       Discounting_values[dis_factin])
+                cmb = CombinedLoss(return_scale = return_scaling_values[ret], ls = LS_values[ls][0],
+                                   dls = LS_values[ls][1])
+                xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,Discounting_values[dis_factin])
+                AA_hedge_pnls = xlearner_preds * data_datesum['NetUsdPnL'].values
+                AA_root_pnls = data_datesum['NetUsdPnL'].values + AA_hedge_pnls
+                dataf = pd.DataFrame(AA_root_pnls)
+                dd = drawdown(dataf)
+                DD = dd.min()
+                calmar = AA_root_pnls.sum() / abs(DD)
+                AA = {'Name': name,
+                      'Hedge PnL': AA_hedge_pnls,
+                      'Root PnL': AA_root_pnls,
+                      'Calmar': calmar}
+                list_dict.append(AA)
+                print('Trial {} complete'.format(cmb))
+    
+    df = pd.DataFrame(list_dict)
+    
     plt.figure()
-    #(data_datesum['NetUsdPnL'].cumsum() - data_datesum['NetUsdPnL'].cumsum().cummax() ).plot()
-    x2 = Xlearner_preds *outcomes # data_datesum['NetUsdPnL'].values
-   # y = x + data_datesum['NetUsdPnL'].values
-    plt.plot(x2.cumsum())
-    #x = Xlearner_preds * data_datesum['NetUsdPnL'].values    #x[1] = 0
-    #plt.plot(x.cumsum())
-   # yweak = x + data_datesum['NetUsdPnL'].values
-    #lt.figure()
-    #data_datesum['NetUsdPnL'].cumsum() - data_datesum['NetUsdPnL'].cumsum().cummax() ).plot()
-    #(pd.DataFrame(y, index = data_datesum['NetUsdPnL'].index).cumsum() - pd.DataFrame(y, index = data_datesum['NetUsdPnL'].index).cumsum().cummax() ).plot()
-    #(pd.DataFrame(yweak, index = data_datesum['NetUsdPnL'].index).cumsum() - pd.DataFrame(yweak, index = data_datesum['NetUsdPnL'].index).cumsum().cummax() ).plot()
+    for n in range(len(df)):
+        plt.plot(np.cumsum(df['Root PnL'].iloc[n]))
+    plt.legend(df['Name'])
+    
+    plot_DD(prediction_array, data_datesum['NetUsdPnL'].values, df['Hedge PnL'], df['Name'])
+        
     
     
-    #ax = data_datesum['NetUsdPnL'].cumsum().plot(fontsize = 20)
-    #test2 = pd.DataFrame(x2, index = data_datesum['NetUsdPnL'].index)
-    #test2.cumsum().plot(ax=ax)
-    #test2['net'] = test2[0].values + data_datesum['NetUsdPnL'].values
-    #test2['net'].cumsum().plot(ax=ax)
-    #plt.xlabel('Time', fontsize = 40)
-    #plt.ylabel('PnL', fontsize = 40)
-    #plt.legend(['Client','Hedge', 'Net'])
+
+    # for n in range(len(AA_pnls)):
+    #         AA_root_pnls.append(sum(data_datesum['NetUsdPnL'].values + AA_pnls[n]))
+    #         dataf = pd.DataFrame(AA_root_pnls[n])
+    #         dd = drawdown(dataf)
+    #         DD.append(dd.min())
+    #         calmar.append(AA_root_pnls[n] / abs(DD[n]))
+
+
+
+
+
+
+
+
+
+
+
+
+#     cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class(outcomes, prediction_array,cmb,1)
+#     x0 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x0)
+#     print('Trial {} complete'.format(cmb))
     
+    
+#     cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,1)
+#     x1 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x1)
+#     print('Trial {} complete'.format(cmb))
+    
+#     cmb = CombinedLoss(return_scale = 50, ls = 1, dls = 0)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,1)
+#     x2 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x2)
+#     print('Trial {} complete'.format(cmb))
+
+#     cmb = CombinedLoss(return_scale = 100, ls = 1, dls = 0)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,1)
+#     x3 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x3)
+#     print('Trial {} complete'.format(cmb))
+
+#     cmb = CombinedLoss(return_scale = 100, ls = 2, dls = 1)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,1)
+#     x4 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x4)
+#     print('Trial {} complete'.format(cmb))
+    
+#     cmb = CombinedLoss(return_scale = 1, ls = 0, dls = 1)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,1)
+#     x5 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x5)
+#     print('Trial {} complete'.format(cmb))
+    
+#     cmb = CombinedLoss(return_scale = 50, ls = 0, dls = 1)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,1)
+#     x6 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x6)
+#     print('Trial {} complete'.format(cmb))
+    
+#     cmb = CombinedLoss(return_scale = 100, ls = 1, dls = 1)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,1)
+#     x7 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x7)
+#     print('Trial {} complete'.format(cmb))
+    
+#     cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,0.1)
+#     x8 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x8)
+#     print('Trial {} complete'.format(cmb))
+    
+#     # cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+#     # xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,0.1)
+#     # x9 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     # AA_list.append(x9)
+#     # print('Trial {} complete'.format(cmb))
+    
+#     # cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+#     # xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,0.01)
+#     # x11 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     # AA_list.append(x11)
+#     # print('Trial {} complete'.format(cmb))
+    
+#     # cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+#     # xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,0.001)
+#     # x12 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     # AA_list.append(x12)
+#     # print('Trial {} complete'.format(cmb))
+
+#     # cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+#     # xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,1)
+#     # x13 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     # AA_list.append(x13)
+#     # print('Trial {} complete'.format(cmb))
+    
+# #     outcomes = data_datesum['NetUsdPnL'].values
+# # # # #     #outcomes = outcomes[:1000]
+#     outcomes = data_datesum['NetUsdPnL'].values
+    
+#     cmb = PnL_weak_loss(return_scale = 1)
+#     xlearner_loss, xexpert_loss, xlearner_preds, weights  = weak_AA_class(outcomes, prediction_array,cmb,2000000)
+#     x10 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x10)
+#     print('Trial {} complete'.format(cmb))
+    
+#     cmb = LS_pnl_loss(return_scale = 0.000001, ls = 1, dls = 0)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,1)
+#     x14 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x14)
+#     print('Trial {} complete'.format(cmb))
+    
+#     cmb = LS_pnl_loss(return_scale = 0.000001, ls = 1, dls = 1)
+#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,1)
+#     x15 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     AA_list.append(x15)
+#     print('Trial {} complete'.format(cmb))
+    
+
+    
+#    # learner_HF = learner_hedge_fraction(client_root,client_wealth, x13, weight_L)#     
+# #     #cmb = PnLLoss(return_scale = 1, cof = 0.0001)
+# #     #learner_loss, expert_loss, learner_preds = AA_Class(outcomes, prediction_array,cmb,1)
+# #     
+# #     #cmb = PnL_weak_loss(return_scale = 1)
+# #     
+# #     #xlearner_loss, xexpert_loss, xlearner_preds, weights  = weak_AA_class(outcomes, prediction_array,cmb,2000000)
+# #     #xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,0.05)
+# #    # wlearner_loss, wexpert_loss, wlearner_preds = AA(outcomes_binary, prediction_array, absoloute_loss,2)
+# # 
+# #     #plt.figure()
+# #     #(data_datesum['NetUsdPnL'].cumsum() - data_datesum['NetUsdPnL'].cumsum().cummax() ).plot()
+# #     
+# #     
+# #     
+# #     
+#     pnl = []
+    
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x0))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x1))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x2))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x3))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x4))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x5))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x6))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x7))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x8))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x14))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x15))
+#     pnl.append(sum(data_datesum['NetUsdPnL'].values + x10))
+
+    
+#     DD = []
+#     calmar = []
+
+    
+#     dd = drawdown(data_datesum['NetUsdPnL'])
+#     DD.append(dd.min())
+#     calmar.append(pnl[0] / abs(DD[0]))
+    
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x0))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[1] / abs(DD[1]))
+    
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x1))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[2] / abs(DD[2]))
+
+
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x2))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[3] / abs(DD[3]))
+    
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x3))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[4] / abs(DD[4]))
+    
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x4))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[5] / abs(DD[5]))
+    
+    
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x5))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[6] / abs(DD[6]))
+    
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x6))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[7] / abs(DD[7]))
+    
+    
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x7))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[8] / abs(DD[8]))
+    
+    
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x8))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[9] / abs(DD[9]))
+    
+    
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x10))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[10] / abs(DD[10]))
+
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x14))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[11] / abs(DD[11]))
+    
+#     dataf = pd.DataFrame((data_datesum['NetUsdPnL'].values + x15))
+#     dd = drawdown(dataf)
+#     DD.append(dd.min())
+#     calmar.append(pnl[12] / abs(DD[12]))
+    
+#     plt.figure()
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values))
+#     #plt.plot(np.cumsum(x2))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x0))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x1))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x2))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x3))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x4))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x5))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x6))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x7))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x8))
+#     #plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x9))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x10))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x14))
+#     plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x15))
+#     # plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x11))
+#     # plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x12))
+#     # plt.plot(np.cumsum(data_datesum['NetUsdPnL'].values + x13))
+#     plt.xlabel('Time', fontsize = 40)
+#     plt.ylabel('PnL', fontsize = 40)
+    
+    
+#     plt.legend(['Client', 'Equal','R=1, LS=1, DLS=0', 'R=50, LS=1, DLS=0',
+#                 'R=100, LS=1, DLS=0', 'R=100, LS=2, DLS=1', 'R=1, LS=0, DLS=1',
+#                 'R=50, LS=0, DLS=1', 'R=100, LS=1, DLS=1',
+#                 'R=1, LS=1, DLS=0, DF=0.1', 'WAA', 'PnL, LS=1, DLS=0',
+#                 'PnL, LS=1, DLS=1'])
+    
+    
+    
+
+#     AA_Name = ['Equal','R=1, LS=1, DLS=0', 'R=50, LS=1, DLS=0',
+#                 'R=100, LS=1, DLS=0', 'R=100, LS=2, DLS=1', 'R=1, LS=0, DLS=1',
+#                 'R=50, LS=0, DLS=1', 'R=100, LS=1, DLS=1',
+#                 'R=1, LS=1, DLS=0, DF=0.1', 'WAA', 'PnL, LS=1, DLS=0',
+#                 'PnL, LS=1, DLS=1']
+    
+#     # # plt.legend(['Client', '1','0.9', '0.8','0.7','0.6','0.5','0.3','0.2','0.1', 'WAA', '0.01','0.001','0.0001'])
+    
+    
+    
+
+#     # # AA_Name = ['1','0.9', '0.8','0.7','0.6','0.5','0.3','0.2','0.1', 'WAA','0.01','0.001','0.0001']
+    
+    
+      
+#     plot_DD(prediction_array, data_datesum['NetUsdPnL'].values, AA_list, AA_Name)
+ 
+#     names = ['Client', 'Equal','R=1, LS=1, DLS=0', 'R=50, LS=1, DLS=0',
+#                   'R=100, LS=1, DLS=0', 'R=100, LS=2, DLS=1', 'R=1, LS=0, DLS=1',
+#                   'R=50, LS=0, DLS=1', 'R=100, LS=1, DLS=1',
+#                   'R=1, LS=1, DLS=0, DF=0.1', 'PnL, LS=1, DLS=0',
+#                 'PnL, LS=1, DLS=1','WAA']
+   
+#     info = {'AA Parameters': names,
+#             'PnL': pnl,
+#             'Drawdown': DD,
+#             'Calmar': calmar}
+#     print(tabulate(info, headers='keys', tablefmt='fancy_grid'))
+ 
+ 
+
+
+
+
+
+
+
+   
+#     
+#    # y = x + data_datesum['NetUsdPnL'].values
+#     #plt.plot(np.cumsum(x2 + data_datesum['NetUsdPnL'].values))
+#     #x = Xlearner_preds * data_datesum['NetUsdPnL'].values    #x[1] = 0
+#     #plt.plot(x.cumsum())
+#    # yweak = x + data_datesum['NetUsdPnL'].values
+#     #lt.figure()
+#     #data_datesum['NetUsdPnL'].cumsum() - data_datesum['NetUsdPnL'].cumsum().cummax() ).plot()
+#     #(pd.DataFrame(y, index = data_datesum['NetUsdPnL'].index).cumsum() - pd.DataFrame(y, index = data_datesum['NetUsdPnL'].index).cumsum().cummax() ).plot()
+#     #(pd.DataFrame(yweak, index = data_datesum['NetUsdPnL'].index).cumsum() - pd.DataFrame(yweak, index = data_datesum['NetUsdPnL'].index).cumsum().cummax() ).plot()
+#     
+#     
+#     #ax = data_datesum['NetUsdPnL'].cumsum().plot(fontsize = 20)
+#     #test2 = pd.DataFrame(x2, index = data_datesum['NetUsdPnL'].index)
+#     #test2.cumsum().plot(ax=ax)
+#     #test2['net'] = test2[0].values + data_datesum['NetUsdPnL'].values
+#     #test2['net'].cumsum().plot(ax=ax)
+# 
+# =============================================================================
     
     

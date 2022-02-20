@@ -45,9 +45,9 @@ def AA_Class(outcomes, prediction, loss: LossFunc, learning_rate):
     weight_log = np.zeros((T, N_experts))
     learner_loss = np.zeros(T)
     for t in range(T):
-        if np.isnan(sum(weights)):
-            break
-        print(t)
+      #  if np.isnan(sum(weights)):
+       #     break
+       # print(t)
 #        if t % 1000 == 0:
 #            weights = np.ones(N_experts)
         norm_weights = weights / sum(weights)
@@ -55,12 +55,38 @@ def AA_Class(outcomes, prediction, loss: LossFunc, learning_rate):
         learner_loss[t] = loss.calc_loss(outcomes[t],learner_prediction[t]) 
         for i in range(N_experts):
             loss_log[t,i] = loss.calc_loss(outcomes[t],prediction[t,i]) 
-            weights[i] = weights[i] * np.exp(-learning_rate*loss_log[t,i]) #+ 0.5    
+            weights[i] = weights[i] # * np.exp(-learning_rate*loss_log[t,i]) #+ 0.5    
         #    if np.isnan(weights[i]):
          #       weights[i] =1
-            weight_log[t] = weights
+        weight_log[t] = weights
             
-    return learner_loss, loss_log, learner_prediction, loss ,weight_log
+    return learner_loss, loss_log, learner_prediction ,weight_log
+
+def AA_Class_discounted(outcomes, prediction, loss: LossFunc, learning_rate, discounting_factor):
+    T = len(outcomes)
+    N_experts = np.size(prediction,1)
+    weights = np.ones(N_experts)
+    learner_prediction = np.zeros(T)
+    loss_log = np.zeros((T, N_experts))
+    weight_log = np.zeros((T, N_experts))
+    learner_loss = np.zeros(T)
+    for t in range(T):
+        if np.isnan(sum(weights)):
+            break
+        #print(t)
+#        if t % 1000 == 0:
+#            weights = np.ones(N_experts)
+        norm_weights = weights / sum(weights)
+        weight_log[t] = norm_weights
+        learner_prediction[t] = sum( norm_weights * prediction[t] )
+        learner_loss[t] = loss.calc_loss(outcomes[t],learner_prediction[t]) 
+        for i in range(N_experts):
+            loss_log[t,i] = loss.calc_loss(outcomes[t],prediction[t,i]) 
+            weights[i] = (weights[i]**discounting_factor) * np.exp(-learning_rate*loss_log[t,i]) #+ 0.5    
+        #    if np.isnan(weights[i]):
+         #       weights[i] =1
+            
+    return learner_loss, loss_log, learner_prediction,weight_log
 
 def weak_AA_class(outcomes, prediction, loss: LossFunc, Upper_Bound):
     T = len(outcomes)
@@ -70,20 +96,25 @@ def weak_AA_class(outcomes, prediction, loss: LossFunc, Upper_Bound):
     loss_log = np.zeros((T, N_experts))
     cumsum_loss = np.zeros(N_experts)
     learner_loss = np.zeros(T)
+    weight_log = np.zeros((T, N_experts))
     C = (2 * math.sqrt(N_experts)) / Upper_Bound
     for t in range(1, T):
-        # print(t)
+        #print(t)
+        #if t % 10000 == 0:
+         #   cumsum_loss = np.zeros(N_experts)
         learner_prediction[t] = sum( norm_weights * prediction[t] )
         learner_loss[t] = loss.calc_loss(outcomes[t],learner_prediction[t])
         denominator = 0
         learning_rate = C / math.sqrt(t)
         for j in range(N_experts):
-                denominator +=  np.exp(-learning_rate)**cumsum_loss[j]
+                denominator +=  np.exp(-learning_rate*cumsum_loss[j])
         for i in range(N_experts):
-            norm_weights[i] = (np.exp(-learning_rate)**cumsum_loss[i]) / denominator
+            norm_weights[i] = (np.exp(-learning_rate*cumsum_loss[i])) / denominator
+            weight_log[t,i] = norm_weights[i]
             loss_log[t,i] = loss.calc_loss(outcomes[t],prediction[t,i])
             cumsum_loss += loss_log[t,:]
-    return learner_loss, loss_log, learner_prediction
+    return learner_loss, loss_log, learner_prediction, weight_log
+
 
 def weak_AA_class_drawdown(outcomes, prediction, loss: LossFunc, Upper_Bound,drawdown):
     T = len(outcomes)
@@ -95,7 +126,7 @@ def weak_AA_class_drawdown(outcomes, prediction, loss: LossFunc, Upper_Bound,dra
     learner_loss = np.zeros(T)
     C = (2 * math.sqrt(N_experts)) / Upper_Bound
     for t in range(1, T):
-        print(t)
+        #print(t)
         learner_prediction[t] = sum( norm_weights * prediction[t] )
         learner_loss[t] = loss.calc_loss(outcomes[t],learner_prediction[t],0)
         denominator = 0
