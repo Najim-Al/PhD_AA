@@ -179,7 +179,35 @@ def grid_agents(agents, netpos):
         results.append(hedges)
     
     return np.array(results).T
+
+
+
+class data(object):
+    def __init__(self, pnl, meanDD):
+        self.pnl = pnl
+        self.meanDD = meanDD
+        
+    def selector(self):
+        maxPnL = self.pnl.max()
+        maxDD = abs(self.meanDD.min())
+        self.normPnL = self.pnl / maxPnL 
+        self.normDD = self.meanDD / maxDD
+        self.distance = np.sqrt( (self.normDD+1)**2 + self.normPnL**2)
+        return self.distance
+
+def roulette_wheel_selection(population):
+  
+    # Computes the totallity of the population fitness
+    population_fitness = population['distance'].sum()
     
+    # Computes for each chromosome the probability 
+    chromosome_probabilities = population['distance'] / population_fitness
+    
+    # Selects one chromosome based on the computed probabilities
+    return np.random.choice(population.index.array,100, p=chromosome_probabilities, replace = False)
+    
+
+
 class Agent(object):
     def __init__(self,indicator,limits, hedge_fractions, skew,window):
         self.indicator = indicator
@@ -200,6 +228,32 @@ class Agent(object):
     def __str__(self):
         return "limits:{},hedge_fractions{},skew{},window{}".format(self.limits,self.hedge_fractions,self.skew,self.window )
         
+class Agent_new(object):
+    def __init__(self,indicator,upper_limit, lower_limit,
+                 upper_hedge_fraction, lower_hedge_fraction,
+                 upper_skew, lower_skew, window):
+        self.indicator = indicator
+        self.upper_limit = upper_limit
+        self.lower_limit = lower_limit
+        self.upper_hedge_fraction = upper_hedge_fraction
+        self.lower_hedge_fraction = lower_hedge_fraction
+        self.upper_skew = upper_skew
+        self.lower_skew = lower_skew
+        self.window = window
+        
+    def Action(self,nop: float,index:int):
+        if self.upper_limit + (self.upper_limit * self.upper_skew *self.indicator[index]) < nop:
+            return self.upper_hedge_fraction
+        elif  -self.lower_limit + (self.lower_limit * self.lower_skew *self.indicator[index]) > nop:
+            return self.lower_hedge_fraction
+        
+        else:
+            return 0
+        
+    def __str__(self):
+        return "limits:{},hedge_fractions{},skew{},window{}".format(self.limits,self.hedge_fractions,self.skew,self.window )
+    
+ 
 import multiprocessing as mp
 
 def find_top_max(hedge_pnls,nth):
@@ -258,7 +312,7 @@ def wealth_prediction(hedge_fractions, client_pos, client_pnl, initial_wealth):
     client_wealth = np.zeros((T+1,N_clients))
     client_wealth_t = np.zeros(N_clients)
     client_root = np.zeros((T,N_clients))
-    client_wealth[0] += initial_wealth
+    client_wealth[0,:] = initial_wealth
     client_wealth_t[:] = initial_wealth
     predictions = np.zeros((T, N_clients))
     for n in range(N_clients):
@@ -274,12 +328,14 @@ def learner_hedge_fraction(client_pos, client_wealth, learner_preds, weights):
         learner_hedge = np.zeros(T)
         for t in range(T):
             norm_weights = weights[t]/ sum(weights[t])
-            norm_pos = norm_weights * client_pos[t]
-            norm_pos = np.sum(norm_pos)
+            #norm_pos = norm_weights * client_pos[t]
+            #norm_pos = np.sum(norm_pos)
             norm_wealth = norm_weights * client_wealth[t]
             norm_wealth = np.sum(norm_wealth)
-            learner_hedge[t] = (norm_pos / norm_wealth) - 1
+            learner_hedge[t] = ((learner_preds[t] * norm_wealth)/client_pos[t]) - 1
         return learner_hedge
+    
+    
 """
     
     data['QdfTime'] = pd.to_datetime(data['QdfTime'])
@@ -321,167 +377,168 @@ def learner_hedge_fraction(client_pos, client_wealth, learner_preds, weights):
     #prediction_array = hedge_fraction_prediction(hedge_array, data_datesum['NetPosUsd'].values)
 """
 if __name__ == '__main__':    
-    agents = pd.read_pickle(r"agents.obj")
-    data_datesum = pd.read_pickle(r"data.obj")
-    prediction_array = pd.read_pickle(r"preds.obj")
-
+    # agents = pd.read_pickle(r"agents.obj")
+    # data_datesum = pd.read_pickle(r"data.obj")
+    # prediction_array = pd.read_pickle(r"preds.obj")
+    data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eur_usd.obj")
+    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\gbp_usd_top_preds_04_3_meeting_np.obj")
+    
     #data_datesum = data_datesum.loc['2014-02-05':'2017-04-20']
     #prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\72expertpreds.obj")
     #DrawDown = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\72expertpredsdrawdown.obj")
     
     
-    data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\data_chf_usd.obj")
-    agents = pd.read_pickle( r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\agents_chf_usd.obj")
-    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\USD_CHF_PREDS.obj")
-    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\CHF_USD_0_drop.obj")
+#     data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\data_chf_usd.obj")
+#     agents = pd.read_pickle( r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\agents_chf_usd.obj")
+#     prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\USD_CHF_PREDS.obj")
+#     prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\CHF_USD_0_drop.obj")
+    prediction_array_new,client_root,client_wealth = wealth_prediction(prediction_array, data_datesum['NetPosUsd'].values, data_datesum['NetUsdPnL'].values, 1*10**10 )
 
- #   prediction_array_new,client_root,client_wealth = wealth_prediction(prediction_array, data_datesum['NetPosUsd'].values, data_datesum['NetUsdPnL'].values, 1*10**10 )
-
-#    data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\data_eur_gbp.obj")
-#   agents = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\agents_eur_gbp.obj")
-#    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\GBP_EUR_PREDS.obj")
+# #    data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\data_eur_gbp.obj")
+# #   agents = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\2021_data\preds_for_AA\agents_eur_gbp.obj")
+# #    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\initial hedge\paper\GBP_EUR_PREDS.obj")
     
-    i = [12743,12855,13191,13079,12967,12631,12519,13303,13415,
-          13415,
-        13431,
-        12309,
-        12310,
-        12311,
-        13303,
-        12855,
-        12967,
-        13303,
-        13415,
-        12407,
-        13079,
-        13191,
-        12631,
-        12743,
-        12519,
-        11495,
-        11607,
-        11831,
-        12167,
-        11943,
-        11271,
-        4424,
-        5544,
-        10047,
-        4408,
-        6655,
-        5560,
-        4312,
-        5432,
-        4200,
-        9935,
-        5320,
-        4296,
-        6543,
-        5448,
-        7863,
-        8871,
-        7975,
-        8423,
-        8199,
-        8535,
-        8087,
-        8759,
-        8647,
-        8311,
-        7970,
-        8530,
-        8194,
-        8754,
-        7858,
-        8306,
-        8642,
-        8866,
-        8418,
-        8871,
-        8759,
-        8870,
-        8865,
-        8866,
-        6689,
-        8647,
-        6694,
-        8887,
-        8758,
-        8753,
-        8754,
-        6577,
-        7735,
-        7751,
-        8535,
-        8646,
-        8641,
-        12368,
-        12592,
-        12928,
-        13376,
-        13040,
-        13264,
-        12816,
-        13152,
-        12704,
-        12480,
-        11520,
-        11296,
-        11744,
-        11968,
-        12080,
-        12192,
-        11856,
-        11408,
-        11632,
-        12304,
-        12192,
-        12080,
-        11968,
-        12288,
-        13424,
-        11184,
-        12176,
-        13312,
-        11072,
-        11856,
-        13376,
-        12064,
-        13200,
-        10960,
-        13264,
-        11952,
-        13088,
-        10848]
-    #prediction_array = prediction_array * -1 
+#     i = [12743,12855,13191,13079,12967,12631,12519,13303,13415,
+#           13415,
+#         13431,
+#         12309,
+#         12310,
+#         12311,
+#         13303,
+#         12855,
+#         12967,
+#         13303,
+#         13415,
+#         12407,
+#         13079,
+#         13191,
+#         12631,
+#         12743,
+#         12519,
+#         11495,
+#         11607,
+#         11831,
+#         12167,
+#         11943,
+#         11271,
+#         4424,
+#         5544,
+#         10047,
+#         4408,
+#         6655,
+#         5560,
+#         4312,
+#         5432,
+#         4200,
+#         9935,
+#         5320,
+#         4296,
+#         6543,
+#         5448,
+#         7863,
+#         8871,
+#         7975,
+#         8423,
+#         8199,
+#         8535,
+#         8087,
+#         8759,
+#         8647,
+#         8311,
+#         7970,
+#         8530,
+#         8194,
+#         8754,
+#         7858,
+#         8306,
+#         8642,
+#         8866,
+#         8418,
+#         8871,
+#         8759,
+#         8870,
+#         8865,
+#         8866,
+#         6689,
+#         8647,
+#         6694,
+#         8887,
+#         8758,
+#         8753,
+#         8754,
+#         6577,
+#         7735,
+#         7751,
+#         8535,
+#         8646,
+#         8641,
+#         12368,
+#         12592,
+#         12928,
+#         13376,
+#         13040,
+#         13264,
+#         12816,
+#         13152,
+#         12704,
+#         12480,
+#         11520,
+#         11296,
+#         11744,
+#         11968,
+#         12080,
+#         12192,
+#         11856,
+#         11408,
+#         11632,
+#         12304,
+#         12192,
+#         12080,
+#         11968,
+#         12288,
+#         13424,
+#         11184,
+#         12176,
+#         13312,
+#         11072,
+#         11856,
+#         13376,
+#         12064,
+#         13200,
+#         10960,
+#         13264,
+#         11952,
+#         13088,
+#         10848]
+#     #prediction_array = prediction_array * -1 
     outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
-    #outcomes = data_datesum['NetUsdPnL'].values
-    #outcomes_binary = outcome_binary(data_datesum['NetUsdPnL'].values)
-    #outcomes = outcomes[:1000]
-    #prediction_array = prediction_array[:1000,:]
-    #data_datesum = data_datesum.iloc[:1000]
-    #outcomes = outcomes[9572:10984]
-    #prediction_array = prediction_array[9572:10984, :]
+#     #outcomes = data_datesum['NetUsdPnL'].values
+#     #outcomes_binary = outcome_binary(data_datesum['NetUsdPnL'].values)
+#     #outcomes = outcomes[:1000]
+#     #prediction_array = prediction_array[:1000,:]
+#     #data_datesum = data_datesum.iloc[:1000]
+#     #outcomes = outcomes[9572:10984]
+#     #prediction_array = prediction_array[9572:10984, :]
     
-#    cmblist = []
- #   for x in range(1,1000,10):
-#        for y in range(1,2):
-#            for z in range(0,1):
-#                cmblist.append( CombinedLoss(return_scale = x, ls = y, dls = z))
+# #    cmblist = []
+#  #   for x in range(1,1000,10):
+# #        for y in range(1,2):
+# #            for z in range(0,1):
+# #                cmblist.append( CombinedLoss(return_scale = x, ls = y, dls = z))
 
-    #Xlearner_loss, Xexpert_loss, Xlearner_preds = weak_AA_class(outcomes, prediction_array,cmb,1)
+#     #Xlearner_loss, Xexpert_loss, Xlearner_preds = weak_AA_class(outcomes, prediction_array,cmb,1)
    
     
-    # Step 1: Init multiprocessing.Pool()
-#    pool = mp.Pool(mp.cpu_count())
+#     # Step 1: Init multiprocessing.Pool()
+# #    pool = mp.Pool(mp.cpu_count())
     
-    # Step 2: `pool.apply` the `howmany_within_range()`
-#    results = [pool.apply(AA_Class, args=(outcomes, prediction_array,cmbdata,1)) for cmbdata in cmblist]
+#     # Step 2: `pool.apply` the `howmany_within_range()`
+# #    results = [pool.apply(AA_Class, args=(outcomes, prediction_array,cmbdata,1)) for cmbdata in cmblist]
     
-#    pool.close()
+# #    pool.close()
     
 
-# =============================================================================
+# # =============================================================================
     AA_hedge_pnls = []
     AA_root_pnls = []
     DD = []
@@ -489,21 +546,21 @@ if __name__ == '__main__':
     
     list_dict = []
     
-    # #run equal weights
-    # cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
-    # xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class(outcomes, prediction_array,cmb,1)
-    # hedge_pnl_0 = xlearner_preds * data_datesum['NetUsdPnL'].values
-    # AA_pnls.append(hedge_pnl_1)
-    # print('Trial {} complete'.format(cmb))
+#     # #run equal weights
+#     # cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+#     # xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class(outcomes, prediction_array,cmb,1)
+#     # hedge_pnl_0 = xlearner_preds * data_datesum['NetUsdPnL'].values
+#     # AA_pnls.append(hedge_pnl_1)
+#     # print('Trial {} complete'.format(cmb))
     
     
     #Equal weights
     outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
     cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
     xlearner_loss, xexpert_loss, xlearner_preds, weights  = AA_Class(outcomes, prediction_array,cmb,1)
-    AA_hedge_pnls = xlearner_preds * data_datesum['NetUsdPnL'].values
+    AA_hedge_pnls = xlearner_preds[0:-1] * data_datesum['NetUsdPnL'].values[1::]
     #AA_pnls.append(hedge_pnl_1)
-    AA_root_pnls = data_datesum['NetUsdPnL'].values + AA_hedge_pnls
+    AA_root_pnls = data_datesum['NetUsdPnL'].values[1::] + AA_hedge_pnls
     dataf = pd.DataFrame(AA_root_pnls)
     dd = drawdown(dataf)
     DD = dd.min()
@@ -519,9 +576,9 @@ if __name__ == '__main__':
     outcomes = data_datesum['NetUsdPnL'].values
     cmb = PnL_weak_loss(return_scale = 1)
     xlearner_loss, xexpert_loss, xlearner_preds, weights  = weak_AA_class(outcomes, prediction_array,cmb,2000000)
-    AA_hedge_pnls = xlearner_preds * data_datesum['NetUsdPnL'].values
+    AA_hedge_pnls = xlearner_preds[0:-1] * data_datesum['NetUsdPnL'].values[1::]
     #AA_pnls.append(hedge_pnl_1)
-    AA_root_pnls = data_datesum['NetUsdPnL'].values + AA_hedge_pnls
+    AA_root_pnls = data_datesum['NetUsdPnL'].values[1::] + AA_hedge_pnls
     dataf = pd.DataFrame(AA_root_pnls)
     dd = drawdown(dataf)
     DD = dd.min()
@@ -536,17 +593,18 @@ if __name__ == '__main__':
     
     #pnl AA games
     LS_values = [[1,0],
-                 [1,1]]
-    Discounting_values = [1, 0.05]
+                  [1,1]]
+    Discounting_values = [1]
 
     for ls in range(len(LS_values)):
         for dis_factin in range(len(Discounting_values)):
             name = 'PnL loss, ls = {}, dls = {}, df = {}'.format(LS_values[ls][0],LS_values[ls][1], Discounting_values[dis_factin])
             cmb = LS_pnl_loss(return_scale = 0.000001, ls = LS_values[ls][0],
-                               dls = LS_values[ls][1])
+                                dls = LS_values[ls][1])
             xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,Discounting_values[dis_factin])
-            AA_hedge_pnls = xlearner_preds * data_datesum['NetUsdPnL'].values
-            AA_root_pnls = data_datesum['NetUsdPnL'].values + AA_hedge_pnls
+            AA_hedge_pnls = xlearner_preds[0:-1] * data_datesum['NetUsdPnL'].values[1::]
+            #AA_pnls.append(hedge_pnl_1)
+            AA_root_pnls = data_datesum['NetUsdPnL'].values[1::] + AA_hedge_pnls
             dataf = pd.DataFrame(AA_root_pnls)
             dd = drawdown(dataf)
             DD = dd.min()
@@ -561,10 +619,10 @@ if __name__ == '__main__':
 
     
     #Standard AA games
-    return_scaling_values = [1, 50, 100]
+    return_scaling_values = [1, 100]
     LS_values = [[1,0],
-                 [1,1]]
-    Discounting_values = [1, 0.05]
+                  [1,1]]
+    Discounting_values = [1]
     
     outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
     for ret in range(len(return_scaling_values)):
@@ -572,14 +630,15 @@ if __name__ == '__main__':
             for dis_factin in range(len(Discounting_values)):
                    
                 name = 'return_scaling = {}, ls = {}, dls = {}, df = {}'.format( return_scaling_values[ret],
-                                                                       LS_values[ls][0],
-                                                                       LS_values[ls][1],
-                                                                       Discounting_values[dis_factin])
+                                                                        LS_values[ls][0],
+                                                                        LS_values[ls][1],
+                                                                        Discounting_values[dis_factin])
                 cmb = CombinedLoss(return_scale = return_scaling_values[ret], ls = LS_values[ls][0],
-                                   dls = LS_values[ls][1])
+                                    dls = LS_values[ls][1])
                 xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class_discounted(outcomes, prediction_array,cmb,1,Discounting_values[dis_factin])
-                AA_hedge_pnls = xlearner_preds * data_datesum['NetUsdPnL'].values
-                AA_root_pnls = data_datesum['NetUsdPnL'].values + AA_hedge_pnls
+                AA_hedge_pnls = xlearner_preds[0:-1] * data_datesum['NetUsdPnL'].values[1::]
+                #AA_pnls.append(hedge_pnl_1)
+                AA_root_pnls = data_datesum['NetUsdPnL'].values[1::] + AA_hedge_pnls
                 dataf = pd.DataFrame(AA_root_pnls)
                 dd = drawdown(dataf)
                 DD = dd.min()
@@ -621,9 +680,9 @@ if __name__ == '__main__':
 
 
 
-#     cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
-#     xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class(outcomes, prediction_array,cmb,1)
-#     x0 = xlearner_preds * data_datesum['NetUsdPnL'].values
+    # cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
+    # xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class(outcomes, prediction_array_new,cmb,1)
+    # x0 = xlearner_preds * data_datesum['NetUsdPnL'].values
 #     AA_list.append(x0)
 #     print('Trial {} complete'.format(cmb))
     
@@ -724,7 +783,7 @@ if __name__ == '__main__':
     
 
     
-#    # learner_HF = learner_hedge_fraction(client_root,client_wealth, x13, weight_L)#     
+  #  learner_HF = learner_hedge_fraction(data_datesum['NetPosUsd'].values,client_wealth, xlearner_preds, weight_L)#     
 # #     #cmb = PnLLoss(return_scale = 1, cof = 0.0001)
 # #     #learner_loss, expert_loss, learner_preds = AA_Class(outcomes, prediction_array,cmb,1)
 # #     
