@@ -8,7 +8,7 @@ from hedge_project import *
 #with open('data.obj', "rb") as fh:
 #  data_datesum = pickle.load(fh)
 
-data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\gbp_usd.obj")#read_pickle('data.obj')
+data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eur_gbp.obj")#read_pickle('data.obj')
 
 model_param = []
 
@@ -110,6 +110,7 @@ def fitness_func(X):
         'Hedge PnL': hedge_pnl,
         'Mean DD': meanDD,
         'MaxDD':maxDD,
+        'hedge fractions': results,
         'param': f'limits:{limit}, hedge_fractions:{fraction},skew:{skew},window:{window}'
 
     })
@@ -117,13 +118,13 @@ def fitness_func(X):
     return -1.0 * pnl/maxDD if maxDD > 0 else 0
 
 # res = fitness_func(np.array([20,-0.2,0.2,40]))
-# print(res)
+# print(res)m
 
 model=ga(function=fitness_func_pnl,dimension=7,variable_type_mixed=vartype,variable_boundaries=varbound,algorithm_parameters=algorithm_param)
 
 model.run()
-model_result = pd.DataFrame.from_dict(data=model_param)
-model_result.to_csv('model_result_gbp_usd_with_hedge.csv')
+model_result2 = pd.DataFrame.from_dict(data=model_param)
+model_result2.to_csv('model_result_eur_gbp_with_hedge.csv')
 
 print(model.param)
 
