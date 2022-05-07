@@ -54,8 +54,8 @@ def outcome_pnl(pnl, NetPos, absvol, mid_price):
     T = len(pnl)
     outcome = np.ones(T)
     maxpos = max(abs(NetPos))
-    for t in range(T-2):
-        outcome[t] = pnl[t+2]#((mid_price[t+2] - mid_price[t+1]) / mid_price[t+1]) * (NetPos[t+1]/maxpos)  #pnl[t+1] / ( abs(NetPos[t]) + absvol[t+1] +1) #(mid_price[t+1] - mid_price[t]) / mid_price[t] #-pnl[t+1] / ( abs(NetPos[t]) + absvol[t+1] )
+    for t in range(T-1):
+        outcome[t] = pnl[t+1]#/1000000 #/ ( abs(NetPos[t]) + absvol[t] +1)#((mid_price[t+1] - mid_price[t]) / mid_price[t]) * (NetPos[t]/maxpos)  #pnl[t+1] / ( abs(NetPos[t]) + absvol[t+1] +1) #(mid_price[t+1] - mid_price[t]) / mid_price[t] #-pnl[t+1] / ( abs(NetPos[t]) + absvol[t+1] )
         
     return outcome
 
@@ -243,11 +243,19 @@ class Agent_new(object):
         self.window = window
         
     def Action(self,nop: float,index:int):
-        if self.upper_limit + (self.upper_limit * self.upper_skew *self.indicator[index]) < nop:
-            return self.upper_hedge_fraction
-        elif  -self.lower_limit + (self.lower_limit * self.lower_skew *self.indicator[index]) > nop:
-            return self.lower_hedge_fraction
+        # if self.upper_limit + (self.upper_limit * self.upper_skew *self.indicator[index]) < nop:
+        #     return self.upper_hedge_fraction
+        # elif  -self.lower_limit + (self.lower_limit * self.lower_skew *self.indicator[index]) > nop:
+        #     return self.lower_hedge_fraction
         
+        # else:
+        #     return 0
+        if nop > 0:
+            longcyl = self.upper_limit + (self.upper_limit * self.upper_skew *self.indicator[index])
+            return min((nop/longcyl),1)*self.upper_hedge_fraction
+        elif nop < 0:
+            shortcyl = -self.lower_limit + (self.lower_limit * self.lower_skew *self.indicator[index])
+            return min(abs(nop/shortcyl), 1)*self.lower_hedge_fraction
         else:
             return 0
         
@@ -368,24 +376,143 @@ def pred_selector(prediction_array, PnL):
 #     plt.ylabel('Max Drawdown', fontsize = 40)
 #     plt.xlabel('PnL', fontsize = 40)
     
-def plot_DD(prediction_array, PnL, AA, AA_names):
-    expert_pnl = prediction_array[0:-1]*PnL[:,np.newaxis][1::]
-    expert_pnl = expert_pnl + PnL[:,np.newaxis][1::]
+# def plot_DD(prediction_array, PnL, AA, AA_names):
+#     expert_pnl = prediction_array[0:-1]*PnL[:,np.newaxis][1::]
+#     expert_pnl = expert_pnl + PnL[:,np.newaxis][1::]
+#     expert_pnl = pd.DataFrame(expert_pnl)
+#     #AA_pnl = AA*PnL + PnL
+#     #AA_pnl = pd.DataFrame(AA_pnl)
+#     fig, ax = plt.subplots()
+#     ax.scatter(expert_pnl.sum(), drawdown(expert_pnl).mean(), color = 'blue')
+#     AA_pnl = AA[0][0:-1]* PnL[1::] + PnL[1::]
+#     AA_pnl = pd.DataFrame(AA_pnl)
+#     ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).mean(), color = 'green')    
+#     for n in range(len(AA)):
+#         AA_pnl = AA[n][0:-1]* PnL[1::] + PnL[1::]
+#         AA_pnl = pd.DataFrame(AA_pnl)
+#         ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).mean(), color = 'red')
+#         ax.annotate(AA_names[n], (AA_pnl.sum(),drawdown(AA_pnl).mean()))
+#     plt.ylabel('Mean Drawdown', fontsize = 40)
+#     plt.xlabel('PnL', fontsize = 40)
+    
+# def plot_DD(prediction_array, PnL, AA, AA_names, n):
+#     expert_pnl = prediction_array[n:-1]*PnL[:,np.newaxis][n+1::]
+#     expert_pnl = expert_pnl + PnL[:,np.newaxis][n+1::]
+#     expert_pnl = pd.DataFrame(expert_pnl)
+#     #AA_pnl = AA*PnL + PnL
+#     #AA_pnl = pd.DataFrame(AA_pnl)
+#     fig, ax = plt.subplots()
+#     #ax.scatter(expert_pnl.sum(), drawdown(expert_pnl).mean(), color = 'blue')
+#     name = []
+#     for i in range(len(prediction_array[0,:])):
+#         ax.scatter(expert_pnl.iloc[:,i].sum(), drawdown(expert_pnl.iloc[:,i]).min(), color = 'blue')
+#         ax.annotate(i, (expert_pnl.iloc[:,i].sum(), drawdown(expert_pnl.iloc[:,i]).min()))
+#     #AA_pnl = AA[0]* PnL + PnL#[0:-1]
+#     #AA_pnl = pd.DataFrame(AA_pnl)
+#     #ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).mean(), color = 'green')    
+#     for n in range(len(AA)):
+#         AA_pnl = AA[n][n:-1]* PnL[n+1::] + PnL[n+1::]
+#         AA_pnl = pd.DataFrame(AA_pnl)
+#         ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = 'red')
+#         ax.annotate(AA_names[n], (AA_pnl.sum(),drawdown(AA_pnl).min()))
+#     plt.ylabel('max Drawdown', fontsize = 40)
+#     plt.xlabel('PnL', fontsize = 40)
+
+# def plot_DD(prediction_array, PnL, AA, AA_names, n):
+#     expert_pnl = prediction_array[n:-1]*PnL[:,np.newaxis][n+1::]
+#     expert_pnl = expert_pnl + PnL[:,np.newaxis][n+1::]
+#     expert_pnl = pd.DataFrame(expert_pnl)
+#     Client_pnl = pd.DataFrame(PnL[n+1::])
+#     #AA_pnl = AA*PnL + PnL
+#     #AA_pnl = pd.DataFrame(AA_pnl)
+#     fig, ax = plt.subplots()
+#     ax.annotate('Un-Hedged', (Client_pnl.iloc[:].sum(), drawdown(Client_pnl.iloc[:]).min()))
+#     #ax.scatter(expert_pnl.sum(), drawdown(expert_pnl).mean(), color = 'blue')
+#     ax.scatter(Client_pnl.iloc[:].sum(), drawdown(Client_pnl.iloc[:]).min(), color = 'green')
+#     ax.annotate('Un-Hedged', (Client_pnl.iloc[:].sum(), drawdown(Client_pnl.iloc[:]).min()))
+#     name = []
+#     for i in range(len(prediction_array[0,:])):
+#         ax.scatter(expert_pnl.iloc[:,i].sum(), drawdown(expert_pnl.iloc[:,i]).min(), color = 'blue')
+#         #ax.annotate(i, (expert_pnl.iloc[:,i].sum(), drawdown(expert_pnl.iloc[:,i]).min()))
+#     #AA_pnl = AA[0]* PnL + PnL#[0:-1]
+#     #AA_pnl = pd.DataFrame(AA_pnl)
+#     #ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).mean(), color = 'green')    
+#     for n in range(len(AA)):
+#         AA_pnl = AA[n][n:-1]* PnL[n+1::] + PnL[n+1::]
+#         AA_pnl = pd.DataFrame(AA_pnl)
+#         ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = 'red')
+#         ax.annotate(AA_names[n], (AA_pnl.sum(),drawdown(AA_pnl).min()))
+#     plt.ylabel('max Drawdown', fontsize = 40)
+#     plt.xlabel('PnL', fontsize = 40)
+
+def plot_DD(prediction_array, PnL, AA, AA_names, n):
+    expert_pnl = prediction_array[n:-1]*PnL[:,np.newaxis][n+1::]
+    expert_pnl = expert_pnl + PnL[:,np.newaxis][n+1::]
     expert_pnl = pd.DataFrame(expert_pnl)
+    Client_pnl = pd.DataFrame(PnL[n+1::])
     #AA_pnl = AA*PnL + PnL
     #AA_pnl = pd.DataFrame(AA_pnl)
     fig, ax = plt.subplots()
-    ax.scatter(expert_pnl.sum(), drawdown(expert_pnl).mean(), color = 'blue')
-    AA_pnl = AA[0][0:-1]* PnL[1::] + PnL[1::]
+    #ax.scatter(expert_pnl.sum(), drawdown(expert_pnl).mean(), color = 'blue')
+    ax.scatter(Client_pnl.iloc[:].sum(), drawdown(Client_pnl.iloc[:]).min(), color = 'green')
+    ax.scatter(expert_pnl.iloc[:,0].sum(), drawdown(expert_pnl.iloc[:,0]).min(), color = 'blue')
+    AA_pnl = AA[0][n:-1]* PnL[n+1::] + PnL[n+1::]
     AA_pnl = pd.DataFrame(AA_pnl)
-    ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).mean(), color = 'green')    
-    for n in range(len(AA)):
-        AA_pnl = AA[n][0:-1]* PnL[1::] + PnL[1::]
+    ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = 'red', marker ='o')
+    AA_pnl = AA[8][n:-1]* PnL[n+1::] + PnL[n+1::]
+    AA_pnl = pd.DataFrame(AA_pnl)
+    ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = 'red', marker ='>')
+    AA_pnl = AA[15][n:-1]* PnL[n+1::] + PnL[n+1::]
+    AA_pnl = pd.DataFrame(AA_pnl)
+    ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = 'red', marker ='^')
+    AA_pnl = AA[22][n:-1]* PnL[n+1::] + PnL[n+1::]
+    AA_pnl = pd.DataFrame(AA_pnl)
+    ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = 'red', marker ='<')
+    AA_pnl = AA[29][n:-1]* PnL[n+1::] + PnL[n+1::]
+    AA_pnl = pd.DataFrame(AA_pnl)
+    ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = 'red', marker ='v')
+    plt.legend(['Un-Hedged', 'Experts', 'u =1, v = 0', 'u =1, v = 1', 'u =0, v = 1', 'u =2, v = 1', 'u =1, v = 2'])
+    #ax.annotate('Un-Hedged', (Client_pnl.iloc[:].sum(), drawdown(Client_pnl.iloc[:]).min()))
+    name = []
+    c = ['r','c','purple','brown','black','deeppink','orange']
+    for i in range(len(prediction_array[0,:])):
+        ax.scatter(expert_pnl.iloc[:,i].sum(), drawdown(expert_pnl.iloc[:,i]).min(), color = 'blue')
+        #ax.annotate(i, (expert_pnl.iloc[:,i].sum(), drawdown(expert_pnl.iloc[:,i]).min()))
+    #AA_pnl = AA[0]* PnL + PnL#[0:-1]
+    #AA_pnl = pd.DataFrame(AA_pnl)
+    #ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).mean(), color = 'green')    
+    for i in range(7):
+        AA_pnl = AA[i][n:-1]* PnL[n+1::] + PnL[n+1::]
         AA_pnl = pd.DataFrame(AA_pnl)
-        ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).mean(), color = 'red')
-        ax.annotate(AA_names[n], (AA_pnl.sum(),drawdown(AA_pnl).mean()))
-    plt.ylabel('Mean Drawdown', fontsize = 40)
-    plt.xlabel('PnL', fontsize = 40)
+        ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = c[i],marker ='o')
+        #ax.annotate(AA_names[n], (AA_pnl.sum(),drawdown(AA_pnl).min()))
+    for i in range(7):
+        AA_pnl = AA[7+i][n:-1]* PnL[n+1::] + PnL[n+1::]
+        AA_pnl = pd.DataFrame(AA_pnl)
+        ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = c[i],marker ='>')
+        #ax.annotate(AA_names[n], (AA_pnl.sum(),drawdown(AA_pnl).min()))
+    for i in range(7):
+        AA_pnl = AA[14+i][n:-1]* PnL[n+1::] + PnL[n+1::]
+        AA_pnl = pd.DataFrame(AA_pnl)
+        ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = c[i],marker ='^')
+        #ax.annotate(AA_names[n], (AA_pnl.sum(),drawdown(AA_pnl).min()))
+    for i in range(7):
+        AA_pnl = AA[21+i][n:-1]* PnL[n+1::] + PnL[n+1::]
+        AA_pnl = pd.DataFrame(AA_pnl)
+        ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = c[i],marker ='<')
+        #ax.annotate(AA_names[n], (AA_pnl.sum(),drawdown(AA_pnl).min()))
+    for i in range(7):
+        AA_pnl = AA[28+i][n:-1]* PnL[n+1::] + PnL[n+1::]
+        AA_pnl = pd.DataFrame(AA_pnl)
+        ax.scatter(AA_pnl.sum(),drawdown(AA_pnl).min(), color = c[i],marker ='v')
+        #ax.annotate(AA_names[n], (AA_pnl.sum(),drawdown(AA_pnl).min()))        
+
+        
+
+    ax.scatter(Client_pnl.iloc[:].sum(), drawdown(Client_pnl.iloc[:]).min(), color = 'green')
+    ax.annotate('Un-Hedged', (Client_pnl.iloc[:].sum(), drawdown(Client_pnl.iloc[:]).min()) , fontsize = 16)
+    plt.ylabel('Max Drawdown', fontsize = 16)
+    plt.xlabel('PnL', fontsize = 16)
     
 def wealth_prediction(hedge_fractions, client_pos, client_pnl, initial_wealth):
     N_clients = len(hedge_fractions[0,:])
@@ -416,6 +543,21 @@ def learner_hedge_fraction(client_pos, client_wealth, learner_preds, weights):
             learner_hedge[t] = ((learner_preds[t] * norm_wealth)/client_pos[t]) - 1
         return learner_hedge
     
+def loss_plot(xlearner_loss, xexpert_loss):
+    plt.figure()
+    for n in range(len(xexpert_loss[0])):
+        temp = np.cumsum(xlearner_loss) - np.cumsum(xexpert_loss.T[n])
+        plt.plot(temp)
+    limit = np.ones(len(xlearner_loss))
+    limit = limit * -1*np.log10(len(xexpert_loss))
+    plt.plot(limit)
+    
+def best_plot(AA, experts, name):
+    plt.figure()
+    idx = experts.sum(axis=1).argmin()
+    plt.plot(experts[idx].cumsum())
+    plt.plot(AA.cumsum())
+    plt.legend(['Best Expert', name])
     
 """
     
@@ -591,6 +733,8 @@ if __name__ == '__main__':
 #         11952,
 #         13088,
 #         10848]
+
+    
 #     #prediction_array = prediction_array * -1 
     #outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
     #outcomes[0:-1] =  outcomes[1::]
@@ -624,11 +768,23 @@ if __name__ == '__main__':
     
     #prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\gbp_usd_top_preds_04_3_meeting.obj")
     data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eur_usd.obj")
-    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eurusd_garun_preds_final.obj")
+    #prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eurusd_garun_preds_final.obj")
     #data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eur_gbp.obj")
     #prediction_array = pd.read_pickle( r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eurgbp_garun_preds_final.obj")
     #data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\gbp_usd.obj")
+    
     #prediction_array = pd.read_pickle( r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\gbp_usd_top_preds_04_3_meeting_np.obj")
+    #prediction_array = pd.read_pickle( r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eurusd_garun_preds_cont.obj")
+    #prediction_array = pd.read_pickle( r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eurgbp_garun_preds_cont.obj")
+    
+    #prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\gbpusd_garun_preds_cont.obj")
+    #prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\gbpusd_garun_preds_cont_nozero.obj")
+    #prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eurgbp_garun_preds_cont_nozero.obj")
+    prediction_array = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eurusd_garun_preds_cont_nozero.obj")
+   
+    # i = [76,10,89,47,49]
+    # prediction_array = prediction_array[:,i]
+    #data_datesum = data_datesum.iloc[:10000]
     AA_hedge_pnls = []
     AA_root_pnls = []
     DD = []
@@ -636,6 +792,8 @@ if __name__ == '__main__':
      
     list_dict = []
     
+    # picks = [74,41]
+    # prediction_array = prediction_array.T[picks].T
 #     # #run equal weights
 #     # cmb = CombinedLoss(return_scale = 1, ls = 1, dls = 0)
 #     # xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_Class(outcomes, prediction_array,cmb,1)
@@ -669,28 +827,62 @@ if __name__ == '__main__':
     
     #weak AA run
     
+    
     outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
-    name = 'Weak AA'
-    cmb = PnL_weak_loss(return_scale = 1) 
-    #cmb = CombinedLoss(return_scale = 300, ls = 1,
-    #                             dls = 0)
-    xlearner_loss, xexpert_loss, xlearner_preds, weights  = weak_AA_class(outcomes, prediction_array,cmb,max(abs(outcomes))*1.2 )
-    AA_hedge_pnls =  xlearner_preds[0:-1] * data_datesum['NetUsdPnL'].values[1::]
-    #AA_pnls.append(hedge_pnl_1)
-    AA_root_pnls =  data_datesum['NetUsdPnL'].values[1::] + AA_hedge_pnls
-    dataf = pd.DataFrame(AA_root_pnls)
-    dd = drawdown(dataf)
-    DD = dd.min()
-    calmar = AA_root_pnls.sum() / abs(DD)
-    AA = {'Name': name, 
-          'preds': xlearner_preds,
-          'weights': weights,
-          'dd': dd,
-          'DD': DD,
-          'calmar': calmar,
-          'pnl': AA_root_pnls.sum()
-          }
-    list_dict.append(AA)
+    
+    
+    
+    
+    
+    LS_values = [[1,0],
+                    [1,1],
+                    [0,1],
+                    [2,1],
+                    [1,2]]
+
+    alpha = [1,0.975, 0.95, 0.925, 0.9, 0.85, 0.8]
+    
+    for ls in range(len(LS_values)):
+        for a in range(len(alpha)):
+            name = 'LS = {}, DLS = {}, Discount = {}%'.format(LS_values[ls][0],
+                                                                    LS_values[ls][1],
+                                                                    round((1-alpha[a])*100,2))
+        #cmb = PnL_weak_loss(return_scale = 1) 
+        # cmb = CombinedLosshedge(return_scale = 200, ls = 1,
+        #                               dls = 0)
+            cmb = CombinedLoss(return_scale = 1, ls = LS_values[ls][0],
+                                     dls = LS_values[ls][1])
+            xlearner_loss, xexpert_loss, xlearner_preds, weights, norm_weights  = weak_AA_class_discounting(outcomes, prediction_array,cmb,5000,alpha[a])
+            #xlearner_loss, xexpert_loss, xlearner_preds, weights  = weak_AA_class(outcomes, prediction_array,cmb,1)
+            AA_hedge_pnls =  xlearner_preds[0:-1] * data_datesum['NetUsdPnL'].values[1::]
+            #AA_pnls.append(hedge_pnl_1)
+            AA_root_pnls =  data_datesum['NetUsdPnL'].values[1::] + AA_hedge_pnls 
+            dataf = pd.DataFrame(AA_root_pnls)
+            dd = drawdown(dataf)
+            DD = dd.min()
+            calmar = AA_root_pnls.sum() / abs(DD)
+            AA = {'WAA Parameters': name, 
+                  'u': LS_values[ls][0],
+                  'v': LS_values[ls][1],
+                  'Discount %': round((1-alpha[a])*100,2),
+                  'preds': xlearner_preds,
+                  'weights': weights,
+                  'dd': dd,
+                  'Max Drawdown': format(DD[0],'.1E'),
+                  'Calmar': round(calmar[0],2),
+                  'PnL': format(AA_root_pnls.sum(),'.1E'),
+                  'L_loss': xlearner_loss,
+                  'E_loss': xexpert_loss,
+                  'wealth': [0],
+                  'norm weights': norm_weights,
+                  'Mean PnL': round(np.mean(AA_root_pnls)),
+                  'PnL Standard Deviation': round(np.std(AA_root_pnls)),
+                  'Sharpe Ratio': round(np.mean((AA_root_pnls)/np.std(AA_root_pnls)) ,2),
+                  'Sortino Ratio': round(np.mean((AA_root_pnls)/np.std(AA_root_pnls[AA_root_pnls<0])) ,2)
+                  
+                  }
+            list_dict.append(AA)
+            print('Trial {} complete'.format(cmb))
     
     
     #pnl AA games
@@ -732,11 +924,11 @@ if __name__ == '__main__':
 #  #   outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
 #   #  outcomes[0:-1] =  outcomes[1::]
 #     for ret in range(len(return_scaling_values)):
-#         for ls in range(len(LS_values)):
-#             name = 'WAAreturn_scaling = {}, ls = {}, dls = {}'.format( return_scaling_values[ret],
-#                                                                     LS_values[ls][0],
-#                                                                     LS_values[ls][1],
-#                                                                     )
+        # for ls in range(len(LS_values)):
+        #     name = 'WAAreturn_scaling = {}, ls = {}, dls = {}'.format( return_scaling_values[ret],
+        #                                                             LS_values[ls][0],
+        #                                                             LS_values[ls][1],
+        #                                                             )
 #             cmb = CombinedLoss(return_scale = return_scaling_values[ret], ls = LS_values[ls][0],
 #                                 dls = LS_values[ls][1])
 #             xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = weak_AA_class_multi(outcomes, prediction_array,cmb,1)
@@ -753,28 +945,33 @@ if __name__ == '__main__':
 #             list_dict.append(AA)
 #             print('Trial {} complete'.format(cmb))
 
-    outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
-    name = 'Equal'
-    cmb = CombinedLoss(return_scale = 1, ls = 1,
-                        dls = 0)
-    xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_equal(outcomes, prediction_array,cmb,1)
-    AA_hedge_pnls = xlearner_preds * data_datesum['NetUsdPnL'].values
-    #AA_pnls.append(hedge_pnl_1)
-    AA_root_pnls = data_datesum['NetUsdPnL'].values + AA_hedge_pnls
-    dataf = pd.DataFrame(AA_root_pnls)
-    dd = drawdown(dataf)
-    DD = dd.min()
-    calmar = AA_root_pnls.sum() / abs(DD)
-    AA = {'Name': name, 
-          'preds': xlearner_preds,
-          'weights': weight_L,
-          'dd': dd,
-          'DD': DD,
-          'calmar': calmar,
-          'pnl': AA_root_pnls.sum()
-          }
-    list_dict.append(AA)
-    print('Trial {} complete'.format(cmb))
+    # outcomes = outcome_pnl(data_datesum['NetUsdPnL'].values, data_datesum['NetPosUsd'].values, data_datesum['AbsVolume'].values, data_datesum['mid_price'].values)
+    # name = 'Equal'
+    # cmb = CombinedLoss(return_scale = 1, ls = 1,
+    #                     dls = 0)
+    # cmb = PnL_weak_loss(return_scale = 1)
+
+    # xlearner_loss, xexpert_loss, xlearner_preds,weight_L  = AA_equal(outcomes, prediction_array,cmb,1)
+    # AA_hedge_pnls = xlearner_preds * data_datesum['NetUsdPnL'].values
+    # #AA_pnls.append(hedge_pnl_1)
+    # AA_root_pnls = data_datesum['NetUsdPnL'].values + AA_hedge_pnls
+    # dataf = pd.DataFrame(AA_root_pnls)
+    # dd = drawdown(dataf)
+    # DD = dd.min()
+    # calmar = AA_root_pnls.sum() / abs(DD)
+    # AA = {'Name': name, 
+    #       'preds': xlearner_preds,
+    #       'weights': weight_L,
+    #       'dd': dd,
+    #       'DD': DD,
+    #       'calmar': calmar,
+    #       'pnl': AA_root_pnls.sum(),
+    #       'L_loss': xlearner_loss,
+    #       'E_loss': xexpert_loss,
+    #       'welath': [0]
+    #       }
+    # list_dict.append(AA)
+    # print('Trial {} complete'.format(cmb))
     
     
     
@@ -814,7 +1011,7 @@ if __name__ == '__main__':
  #            list_dict.append(AA)
  #            print('Trial {} complete'.format(cmb))
             
-    df3 = pd.DataFrame(list_dict)
+    dftest = pd.DataFrame(list_dict)
             
  #    return_scaling_values = [1,100,200,300]
  #    LS_values = [[1,0],

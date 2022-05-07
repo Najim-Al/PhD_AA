@@ -8,12 +8,12 @@ from hedge_project import *
 #with open('data.obj', "rb") as fh:
 #  data_datesum = pickle.load(fh)
 
-data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eur_gbp.obj")#read_pickle('data.obj')
+data_datesum = pd.read_pickle(r"C:\Users\Owner\Documents\University\PhD\Data\feb_21_paper\eur_usd.obj")#read_pickle('data.obj')
 
 model_param = []
 
 
-algorithm_param = {'max_num_iteration': 200,\
+algorithm_param = {'max_num_iteration': 50,\
                    'population_size':50,\
                    'mutation_probability':0.2,\
                    'elit_ratio': 0.01,\
@@ -124,7 +124,7 @@ model=ga(function=fitness_func_pnl,dimension=7,variable_type_mixed=vartype,varia
 
 model.run()
 model_result2 = pd.DataFrame.from_dict(data=model_param)
-model_result2.to_csv('model_result_eur_gbp_with_hedge.csv')
+model_result2.to_csv('model_result_eur_usd_cont_hedge.csv')
 
 print(model.param)
 
