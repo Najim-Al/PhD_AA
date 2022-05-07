@@ -1,13 +1,8 @@
-# This CITATION.cff file was generated with cffinit.
-# Visit https://bit.ly/cffinit to generate yours today!
-
-cff-version: 1.2.0
-title: WAA for Hedging
-message: >-
-  If you use this dataset, please cite it using the
-  metadata from this file.
-type: software
-authors:
-  - given-names: Najim Al-baghdadi
-    email: najimalbaghdadi@gmail.com
-    affiliation: 'Royal Holloway, University of London'
+@misc{PhD_AA_data,
+  author = {Najim, Al-baghdadi},
+  title = {WAA for Hedging, (PhD_AA)},
+  year = {2022},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/Najim-Al/PhD_AA}}
+}
